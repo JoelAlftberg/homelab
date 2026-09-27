@@ -1,0 +1,5 @@
+---
+- hosts: local
+  become: true # Run with sudo
+  roles:
+    - kvm_host

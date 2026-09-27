@@ -1,0 +1,21 @@
+---
+- hosts: services
+  become: yes
+
+  vars_prompt:
+    - name: ssh_key_path
+      prompt: "Enter the path to the Day-0 Terraform private key"
+      private: false
+      default: "~/.ssh/id_rsa"
+    
+    - name: gitlab_initial_pass
+      prompt: "Enter the initial password for @root in gitlab"
+      private: true
+      confirm: true
+
+  vars:
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    gitlab_root_pass: "{{ gitlab_initial_pass }}"
+
+  roles:
+    - services_host

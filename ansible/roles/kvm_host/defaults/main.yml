@@ -1,0 +1,3 @@
+---
+# Username to be granted virtualization privileges
+target_user: "{{ lookup('env', 'USER')}}"
