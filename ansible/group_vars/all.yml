@@ -16,10 +16,6 @@ app_services:
     service: grafana
     internal_port: 3000
     protocol: "http"
-  - name: alloy
-    service: alloy
-    internal_port: 4138
-    protocol: "http"
   - name: s3
     service: s3
     internal_port: 8333
@@ -35,6 +31,10 @@ app_services:
   - name: loki
     service: loki
     internal_port: 3100
+    protocol: "http"
+  - name: alloy
+    service: alloy
+    internal_port: 12345
     protocol: "http"
 
 ansible_user: fedora

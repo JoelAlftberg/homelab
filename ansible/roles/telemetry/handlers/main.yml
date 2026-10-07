@@ -1,0 +1,6 @@
+---
+- name: Restart alloy container
+  containers.podman.podman_container:
+    name: alloy
+    state: started
+    restart: true

@@ -62,8 +62,10 @@
     - ansible.builtin.include_role:
         name: pki_bridge
 
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: gitlab
+      tags:
+        - gitlab
     
     - ansible.builtin.include_role:
         name: vaultwarden
@@ -74,8 +76,13 @@
     - ansible.builtin.include_role:
         name: consul 
 
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: lgtm-stack 
+      tags:
+        - telemetry
 
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: telemetry 
+      tags:
+        - telemetry
+      

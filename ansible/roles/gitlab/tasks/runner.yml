@@ -21,6 +21,6 @@
     network_alias:
       - gitlab-runner
     volumes:
-      - "/run/podman/podman.sock:/var/run/docker.sock:Z"
+      - "/run/podman/podman.sock:/var/run/docker.sock:z"
       - "/mnt/storage/gitlab/runner-config:/etc/gitlab-runner:Z"
       - "/mnt/storage/certs:/etc/gitlab-runner/certs:Z"

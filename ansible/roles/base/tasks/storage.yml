@@ -47,7 +47,6 @@
     - /mnt/storage/coredns
     - /mnt/storage/traefik/config
     - /mnt/storage/traefik/acme
-    - /mnt/storage/grafana
     - /mnt/storage/vaultwarden/data
     - /mnt/storage/certs
     - /mnt/storage/prometheus/config

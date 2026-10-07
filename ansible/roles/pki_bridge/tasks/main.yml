@@ -31,6 +31,7 @@
       - "grafana.homelab"
       - "prometheus.homelab"
       - "loki.homelab"
+      - "alloy.homelab"
       - "idp.homelab"
 
 # Regex portion strips the DNS: from the start of the SANs to match the desired list

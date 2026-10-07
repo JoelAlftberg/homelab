@@ -11,7 +11,7 @@
 
 - name: Start Prometheus Podman Exporter container
   containers.podman.podman_container:
-    name: podman-exporters 
+    name: podman-exporter 
     image: quay.io/navidys/prometheus-podman-exporter:latest
     state: started
     restart_policy: always
@@ -33,6 +33,7 @@
     src: config.alloy.j2
     dest: /mnt/storage/alloy/config/config.alloy
     mode: '0755'
+  notify: Restart alloy container
 
 - name: Start Alloy container
   containers.podman.podman_container:
@@ -41,13 +42,17 @@
     state: started
     restart_policy: always
     network: homelab-net
+    security_opt:
+      - "label=disable"
     network_alias:
       - alloy
     volumes:
-      - "/mnt/storage/alloy/config:/etc/alloy/:Z"
+      - "/mnt/storage/alloy/config:/etc/alloy:Z"
       - "/mnt/storage/alloy/data:/var/lib/alloy/data:Z"
+      - "/run/podman/podman.sock:/var/run/docker.sock:z"
     command:
       - "run"
       - "--storage.path=/var/lib/alloy/data"
       - "/etc/alloy/config.alloy"
+      - "--server.http.listen-addr=0.0.0.0:12345"
 
