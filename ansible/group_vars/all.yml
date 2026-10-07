@@ -16,6 +16,10 @@ app_services:
     service: grafana
     internal_port: 3000
     protocol: "http"
+  - name: alloy
+    service: alloy
+    internal_port: 4138
+    protocol: "http"
   - name: s3
     service: s3
     internal_port: 8333
@@ -27,6 +31,10 @@ app_services:
   - name: prometheus
     service: prometheus
     internal_port: 9090
+    protocol: "http"
+  - name: loki
+    service: loki
+    internal_port: 3100
     protocol: "http"
 
 ansible_user: fedora

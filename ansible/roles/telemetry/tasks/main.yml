@@ -1,0 +1,53 @@
+---
+- name: Start Prometheus Node Exporter container
+  containers.podman.podman_container:
+    name: node-exporter 
+    image: docker.io/prom/node-exporter:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - node-exporter
+
+- name: Start Prometheus Podman Exporter container
+  containers.podman.podman_container:
+    name: podman-exporters 
+    image: quay.io/navidys/prometheus-podman-exporter:latest
+    state: started
+    restart_policy: always
+    security_opt:
+      - "label=type:container_runtime_t"
+    userns_mode: "keep-id:uid=65534"
+    network: homelab-net
+    network_alias:
+      - podman-exporter
+    env:
+      CONTAINER_HOST: "unix:///run/podman/podman.sock"
+    volumes:
+      - "/run/podman/podman.sock:/run/podman/podman.sock:Z"
+    command: 
+      - "--collector.enable-all"
+
+- name: Render Alloy config
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: /mnt/storage/alloy/config/config.alloy
+    mode: '0755'
+
+- name: Start Alloy container
+  containers.podman.podman_container:
+    name: alloy
+    image: docker.io/grafana/alloy:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - alloy
+    volumes:
+      - "/mnt/storage/alloy/config:/etc/alloy/:Z"
+      - "/mnt/storage/alloy/data:/var/lib/alloy/data:Z"
+    command:
+      - "run"
+      - "--storage.path=/var/lib/alloy/data"
+      - "/etc/alloy/config.alloy"
+

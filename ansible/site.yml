@@ -75,7 +75,7 @@
         name: consul 
 
     - ansible.builtin.include_role:
-        name: grafana
+        name: lgtm-stack 
 
     - ansible.builtin.include_role:
-        name: prometheus
+        name: telemetry 

@@ -30,7 +30,6 @@
       - "vaultwarden.homelab"
       - "grafana.homelab"
       - "prometheus.homelab"
-      - "otel.homelab"
       - "loki.homelab"
       - "idp.homelab"
 
