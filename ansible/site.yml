@@ -76,3 +76,6 @@
 
     - ansible.builtin.include_role:
         name: grafana
+
+    - ansible.builtin.include_role:
+        name: prometheus

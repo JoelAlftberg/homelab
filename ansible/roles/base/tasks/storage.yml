@@ -50,6 +50,7 @@
     - /mnt/storage/grafana
     - /mnt/storage/vaultwarden/data
     - /mnt/storage/certs
+    - /mnt/storage/prometheus/config
 
 - name: Ensure Vault host directories exist with correct permissions
   ansible.builtin.file:
