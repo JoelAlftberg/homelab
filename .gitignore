@@ -8,3 +8,13 @@
 # Ansible
 *.retry
 .ansible/
+
+# Certificates and keyfiles
+*.pem
+*.cert
+*id_rsa*
+
+# Logfiles
+*.log
+
+

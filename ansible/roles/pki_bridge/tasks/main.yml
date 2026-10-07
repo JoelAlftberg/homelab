@@ -1,0 +1,130 @@
+---
+- name: Check if current Traefik certificate exists on target
+  ansible.builtin.stat:
+    path: /mnt/storage/traefik/certs/wildcard.homelab.crt
+  register: remote_cert
+
+- name: Fetch remote cert to local ansible host
+  ansible.builtin.fetch:
+    src: /mnt/storage/traefik/certs/wildcard.homelab.crt
+    dest: /tmp/homelab_wildcard.crt
+    flat: yes
+  when: remote_cert.stat.exists
+
+- name: Check existing Traefik cert details
+  community.crypto.x509_certificate_info:
+    path: /tmp/homelab_wildcard.crt
+  delegate_to: localhost
+  register: existing_cert_info
+  when: remote_cert.stat.exists and remote_cert.stat.isreg is defined
+  become: false
+  ignore_errors: true
+
+- name: Define desired SANs list
+  ansible.builtin.set_fact:
+    desired_san_list:
+      - "vault.homelab"
+      - "gitlab.homelab"
+      - "consul.homelab"
+      - "s3.homelab"
+      - "vaultwarden.homelab"
+      - "grafana.homelab"
+      - "prometheus.homelab"
+      - "otel.homelab"
+      - "loki.homelab"
+      - "idp.homelab"
+
+# Regex portion strips the DNS: from the start of the SANs to match the desired list
+- name: Set temporary certificate flag
+  ansible.builtin.set_fact:
+    is_temp_cert: >-
+      {{ 
+        not remote_cert.stat.exists or
+        existing_cert_info.failed | default(true) or
+        (existing_cert_info.issuer == existing_cert_info.subject) or
+        (
+          desired_san_list | difference(
+            existing_cert_info.subject_alt_name | default([])
+            | map('regex_replace', '^DNS:', '')
+            | list
+            ) | length > 0
+        )
+      }}
+
+- name: Issue wildcard certificate from Vault PKI
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/pki_int/issue/homelab-server-role"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
+    body_format: json
+    body:
+      common_name: "*.homelab"
+      alt_names: "{{ desired_san_list | join(',') }}"
+      format: "pem"
+    status_code: [200]
+    validate_certs: false
+  delegate_to: localhost
+  register: vault_cert_response
+  when: is_temp_cert 
+  become: false
+
+- name: Overwrite Traefik placeholder cert with Vault PKI certificate chain
+  ansible.builtin.copy:
+    content: "{{ vault_cert_response.json.data.certificate }}\n{{ vault_cert_response.json.data.issuing_ca }}"
+    dest: /mnt/storage/traefik/certs/wildcard.homelab.crt
+    mode: '0644'
+  register: pki_cert_written
+  when: is_temp_cert and vault_cert_response.json is defined
+
+- name: Overwrite Traefik placeholder key with Vault PKI key
+  ansible.builtin.copy:
+    content: "{{ vault_cert_response.json.data.private_key }}"
+    dest: /mnt/storage/traefik/certs/wildcard.homelab.key
+    mode: '0600'
+  register: pki_key_written
+  when: is_temp_cert and vault_cert_response.json is defined
+  no_log: true
+  
+- name: Restart Traefik to load the production certificate
+  ansible.builtin.command: podman restart traefik
+  when: pki_cert_written.changed or pki_key_written.changed
+
+- name: Download Root CA certificate from Vault
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/pki/cert/ca"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
+    status_code: [200]
+    validate_certs: false
+  delegate_to: localhost
+  become: false
+  register: vault_root_ca_response
+
+- name: Download Intermediate CA certificate chain from Vault
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/pki_int/cert/ca_chain"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
+    status_code: [200]
+    validate_certs: false
+  delegate_to: localhost
+  become: false
+  register: vault_intermediate_ca_response
+
+- name: Save Root CA certificate to file
+  ansible.builtin.copy:
+    content: "{{ vault_root_ca_response.json.data.certificate }}\n"
+    dest: "{{ playbook_dir }}/homelab-root-ca.pem"
+  delegate_to: localhost
+  become: false
+
+- name: Write Intermediate CA certificate chain to mounted storage
+  ansible.builtin.copy:
+    content: "{{ vault_intermediate_ca_response.json.data.ca_chain }}"
+    dest: "/mnt/storage/certs/gitlab.homelab.crt"
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,6 +1,6 @@
 ---
 - hosts: services
-  become: yes
+  become: true
 
   vars_prompt:
     - name: ssh_key_path
@@ -12,10 +12,67 @@
       prompt: "Enter the initial password for @root in gitlab"
       private: true
       confirm: true
+      default: "change_this_after_first_boot"
+
+    - name: gitlab_runner_token
+      prompt: "Enter the GitLab runner token"
+      private: true
+      default: "token"
+
+  pre_tasks:
+    - name: Ensure hvac library is installed on this host for vault bootstrapping 
+      ansible.builtin.pip:
+        name: hvac
+        state: present
+        extra_args: "--user"
+      delegate_to: localhost
+      become: false
 
   vars:
+    vault_url: "https://vault.homelab"
+    root_lease_ttl: "87600h"
+    intermediate_lease_ttl: "43800h"
     ansible_ssh_private_key_file: "{{ ssh_key_path }}"
     gitlab_root_pass: "{{ gitlab_initial_pass }}"
+    service_host_ip: "10.22.1.100"
+    traefik_internal_ip: "10.89.1.10"
 
-  roles:
-    - services_host
+
+  environment:
+    VAULT_ADDR: "{{ vault_url }}"
+    VAULT_SKIP_VERIFY: "true"
+    VAULT_TOKEN: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
+  
+  tasks:
+    - ansible.builtin.include_role:
+        name: base
+
+    - ansible.builtin.include_role:
+        name: network
+
+    - ansible.builtin.include_role:
+        name: coredns 
+
+    - ansible.builtin.include_role:
+        name: traefik 
+
+    - ansible.builtin.include_role:
+        name: vault 
+    
+    - ansible.builtin.include_role:
+        name: pki_bridge
+
+    - ansible.builtin.include_role:
+        name: gitlab
+    
+    - ansible.builtin.include_role:
+        name: vaultwarden
+
+    - ansible.builtin.include_role:
+        name: s3
+
+    - ansible.builtin.include_role:
+        name: consul 
+
+    - ansible.builtin.include_role:
+        name: grafana

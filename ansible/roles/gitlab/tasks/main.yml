@@ -1,0 +1,26 @@
+- name: Start GitLab container
+  containers.podman.podman_container:
+    name: gitlab
+    image: docker.io/gitlab/gitlab-ce:19.2.7-ce.0
+    state: started
+    network: homelab-net
+    network_alias: 
+      - gitlab
+    restart_policy: always
+    volumes:
+      - "/mnt/storage/gitlab/config:/etc/gitlab:Z"
+      - "/mnt/storage/gitlab/logs:/var/log/gitlab:Z"
+      - "/mnt/storage/gitlab/data:/var/opt/gitlab:Z"
+    env:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.homelab'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['proxy_set_headers'] = {
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+        gitlab_rails['initial_root_password'] = '{{ gitlab_root_pass }}'
+
+- name: Include GitLab runner tasks
+  ansible.builtin.include_tasks: runner.yml

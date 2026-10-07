@@ -1,0 +1,29 @@
+---
+app_services:
+  - name: vault
+    service: vault
+    internal_port: 8200
+    protocol: "http"
+  - name: gitlab
+    service: gitlab
+    internal_port: 80
+    protocol: "http"
+  - name: consul
+    service: consul
+    internal_port: 8500
+    protocol: "http"
+  - name: grafana
+    service: grafana
+    internal_port: 3000
+    protocol: "http"
+  - name: s3
+    service: s3
+    internal_port: 8333
+    protocol: "http"
+  - name: vaultwarden
+    service: vaultwarden
+    internal_port: 80
+    protocol: "http"
+
+ansible_user: fedora
+ansible_python_interpreter: "/usr/bin/python3"

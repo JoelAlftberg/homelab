@@ -1,0 +1,22 @@
+.:53 {
+    forward . 1.1.1.1 1.0.0.1
+    cache 30
+    errors
+}
+
+homelab:53 {
+    
+    hosts {
+        10.22.1.10 staging-k8s-control-plane-01.homelab
+        10.22.1.11 staging-k8s-worker-01.homelab
+        10.22.1.12 staging-k8s-worker-02.homelab
+        fallthrough
+    }
+
+    template IN A {
+        answer "{% raw %}{{ .Name }}{% endraw %} 60 IN A {{ service_host_ip }}"
+    }
+    forward . 1.1.1.1 8.8.8.8
+    cache 30
+    errors
+}

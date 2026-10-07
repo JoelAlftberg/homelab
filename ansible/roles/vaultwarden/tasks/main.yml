@@ -1,0 +1,12 @@
+---
+- name: Start vaultwarden container
+  containers.podman.podman_container:
+    name: vaultwarden
+    image: docker.io/vaultwarden/server:latest
+    network: homelab-net
+    network_alias:
+      - vaultwarden
+    state: started
+    restart_policy: always
+    volumes:
+      - "/mnt/storage/vaultwarden/data:/data:Z"

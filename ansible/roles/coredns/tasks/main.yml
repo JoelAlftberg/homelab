@@ -1,0 +1,26 @@
+---
+- name: Ensure CoreDNS data directories exists 
+  ansible.builtin.file:
+    path: /mnt/storage/coredns
+    state: directory
+    mode: '0755'
+
+- name: Render CoreDNS Corefile from template
+  ansible.builtin.template:
+    src: Corefile.j2
+    dest: /mnt/storage/coredns/Corefile
+    mode: '0644'
+
+- name: Start CoreDNS container
+  containers.podman.podman_container:
+    name: coredns
+    image: docker.io/coredns/coredns:latest
+    state: started
+    restart_policy: always
+    command: "-conf /etc/coredns/Corefile"
+    pull: missing
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - "/mnt/storage/coredns/Corefile:/etc/coredns/Corefile:Z"

@@ -1,0 +1,16 @@
+---
+- name: Setup S3 (SeaweedFS) container
+  containers.podman.podman_container:
+    name: s3
+    image: docker.io/chrislusf/seaweedfs:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - s3
+    volumes:
+      - "/mnt/storage/s3:/data:Z"
+    env:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: secret
+      S3_BUCKET: homelab

@@ -1,0 +1,107 @@
+---
+- name: Setup and start vault container    
+  block:
+
+  - name: Render vault config from template
+    ansible.builtin.template:
+      src: vault.j2
+      dest: /mnt/storage/vault/config/vault.hcl
+      mode: '0644'
+
+  - name: Start HashiCorp vault container
+    containers.podman.podman_container:
+      name: vault
+      image: docker.io/hashicorp/vault:latest
+      state: started
+      restart_policy: always
+      command: 
+        - "server"
+      capabilities:
+        - IPC_LOCK
+      pull: missing
+      network: homelab-net
+      network_aliases:
+        - vault
+      volumes:
+        - "/mnt/storage/vault/config/vault.hcl:/vault/config/vault.hcl:Z"
+        - "/mnt/storage/vault/data:/vault/data:Z"
+        - "/mnt/storage/vault/certs:/vault/certs:Z"
+
+- name: Initialize and unseal vault
+  block:
+
+    - name: Check Vault status via container exec
+      ansible.builtin.command: >
+        podman exec
+        -e VAULT_ADDR=http://127.0.0.1:8200 
+        vault
+        vault status 
+        -format=json
+      register: vault_status_response
+      failed_when: false
+      changed_when: false
+      tags: [vault]
+
+    - name: Parse vault status response
+      ansible.builtin.set_fact:
+        vault_status: "{{ vault_status_response.stdout | from_json}}"
+      when: vault_status_response.rc == 0 or vault_status_response.rc == 2
+      tags: [vault]
+
+    - name: Initialize vault if uninitialized
+      ansible.builtin.command: >
+        podman exec 
+        -e VAULT_ADDR=http://127.0.0.1:8200
+        vault
+        vault operator init
+        -format=json
+        -key-shares=1
+        -key-threshold=1
+      register: vault_init_output
+      when:
+        - vault_status is defined
+        - not vault_status.initialized
+      tags: [vault]
+
+    - name: Extract Vault bootstrap secrets into facts
+      ansible.builtin.set_fact:
+       vault_unseal_key: "{{ (vault_init_output.stdout | from_json)['unseal_keys_b64'][0] }}"
+       vault_root_token: "{{ (vault_init_output.stdout | from_json)['root_token'] }}"
+      when: vault_init_output.changed
+      tags: [vault] 
+
+    - name: Display the generated unseal key (save this to the CI/CD secrets!)
+      ansible.builtin.debug:
+        msg: "NEW VAULT INITIALIZED! Copy this unseal key to your CI/CD variables: {{ vault_unseal_key }}"
+      when: vault_init_output.changed
+      tags: [vault]
+
+    - name: Display Root Token (For Day-0 setup only)
+      ansible.builtin.debug:
+        msg: "ROOT TOKEN -> Use this right now to configure your PKI, then revoke it! -> {{ vault_root_token }}"
+      when: vault_init_output.changed
+      tags: [vault]
+
+    - name: Set active vault token fact for subsequent tasks
+      ansible.builtin.set_fact:
+        active_vault_token: "{{ vault_root_token }}"
+      when: vault_root_token is defined
+      tags: [vault]
+
+    - name: Determine active unseal key (freshly generated or from environment)
+      ansible.builtin.set_fact:
+        active_unseal_key: "{{ vault_unseal_key | default(lookup('env', 'VAULT_UNSEAL_KEY'), true) }}"
+      tags: [vault, unseal]
+
+    - name: Unseal Vault if sealed
+      ansible.builtin.command: >
+        podman exec
+        -e VAULT_ADDR=http://127.0.0.1:8200
+        vault
+        vault operator unseal
+        {{ active_unseal_key }}
+      when:
+        - active_unseal_key | length > 0
+        - vault_status is defined
+        - vault_status.sealed
+      tags: [vault, unseal]

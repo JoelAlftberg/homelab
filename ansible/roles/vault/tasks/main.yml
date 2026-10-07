@@ -1,0 +1,6 @@
+---
+- name: Run core Vault setup and deployment
+  ansible.builtin.include_tasks: vault.yml
+
+- name: Configure Vault PKI and bootstrap certs
+  ansible.builtin.include_tasks: pki.yml

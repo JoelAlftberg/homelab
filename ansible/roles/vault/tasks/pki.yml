@@ -1,0 +1,128 @@
+---
+- name: PKI Setup
+  block:
+    - name: Check if Root PKI engine is already mounted
+      community.hashi_vault.vault_read:
+        path: "sys/mounts/pki"
+      register: root_mount_check
+      ignore_errors: true
+      delegate_to: localhost
+
+    - name: Check if Intermidate engine is already mounted
+      community.hashi_vault.vault_read:
+        path: "sys/mounts/pki_int"
+      register: int_mount_check
+      ignore_errors: true
+      delegate_to: localhost
+
+    - name: Check if Root CA cert already exists
+      community.hashi_vault.vault_read:
+        path: "pki/cert/ca"
+      register: root_ca_check
+      ignore_errors: true
+      delegate_to: localhost
+
+    - name: Check if Intermediate CA cert already exists
+      community.hashi_vault.vault_read:
+        path: "pki_int/cert/ca"
+      register: int_ca_check 
+      ignore_errors: true
+      delegate_to: localhost
+
+    - name: 1. Enable Root PKI engine
+      community.hashi_vault.vault_write:
+        path: "sys/mounts/pki"
+        data:
+          type: "pki"
+          config:
+            max_lease_ttl: "{{ root_lease_ttl }}"
+      when: root_mount_check.failed | default(false)
+      delegate_to: localhost
+
+    - name: 2. Tune Root PKI max lease TTL
+      community.hashi_vault.vault_write:
+        path: "sys/mounts/pki/tune"
+        data:
+          max_lease_ttl: "{{ root_lease_ttl }}"
+      delegate_to: localhost
+
+    - name: 3. Generate Root CA cert
+      community.hashi_vault.vault_write:
+        path: "pki/root/generate/internal"
+        data:
+          common_name: "Homelab Root CA"
+          issuer_name: "root-ca-2026"
+          ttl: "{{ root_lease_ttl }}"
+      register: root_ca_result
+      when: root_ca_check.failed | default(false)
+      delegate_to: localhost
+
+    - name: 4. Configure Root CA URLs
+      community.hashi_vault.vault_write:
+        path: "pki/config/urls"
+        data:
+          issuing_certificates: "{{ vault_url }}/v1/pki/ca"
+          crl_distribution_points: "{{ vault_url }}/v1/pki/crl"
+      delegate_to: localhost
+      
+    - name: 5. Enable Intermediate PKI engine
+      community.hashi_vault.vault_write:
+        path: "sys/mounts/pki_int"
+        data:
+          type: "pki"
+          config:
+            max_lease_ttl: "{{ intermediate_lease_ttl }}"
+      when: int_mount_check.failed | default(false)
+      delegate_to: localhost
+
+    - name: 6. Generate Intermediate CSR 
+      community.hashi_vault.vault_write:
+        path: "pki_int/intermediate/generate/internal"
+        data:
+          common_name: "Homelab Intermediate CA"
+          issuer_name: "intermediate-ca-2026"
+          ttl: "{{ intermediate_lease_ttl }}"
+      register: int_csr_result
+      when: int_ca_check.failed | default(false)
+      delegate_to: localhost
+
+    - name: 7. Sign Intermediate CSR with Root CA 
+      community.hashi_vault.vault_write:
+        path: "pki/root/sign-intermediate"
+        data:
+          csr: "{{ (int_csr_result.get('data', {}).get('data', {}) | default({})).get('csr', '') }}"
+          format: "pem_bundle"
+          ttl: "{{ intermediate_lease_ttl }}"
+      register: signed_cert_result
+      delegate_to: localhost
+      when: int_ca_check.failed | default(false)
+
+    - name: 8. Import signed Intermediate certificate 
+      community.hashi_vault.vault_write:
+        path: "pki_int/intermediate/set-signed"     
+        data:
+          certificate: "{{ (signed_cert_result.get('data', {}).get('data', {}) | default({})).get('certificate', '') }}"
+      delegate_to: localhost
+      when: int_ca_check.failed | default(false)
+
+    - name: 9. Configure Intermediate URLs 
+      community.hashi_vault.vault_write:
+        path: "pki_int/config/urls"
+        data:
+          issuing_certificates: "{{ vault_url }}/v1/pki_int/ca"
+          crl_distribution_points: "{{ vault_url }}/v1/pki_int/crl"
+      delegate_to: localhost
+
+    - name: 10. Create the Server Certificate Role
+      community.hashi_vault.vault_write:
+        path: "pki_int/roles/homelab-server-role"
+        data:
+          allowed_domains: "homelab"
+          allow_subdomains: true
+          allow_localhost: true
+          allow_bare_domains: true
+          max_ttl: "720h"
+          key_usage: "DigitalSignature,KeyEncipherment"
+          ext_key_usage: "ServerAuth"
+      delegate_to: localhost
+  become: false

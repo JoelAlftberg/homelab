@@ -33,10 +33,6 @@ resource "libvirt_volume" "data_disk" {
     }
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
-
 }
 
 resource "libvirt_cloudinit_disk" "init" {

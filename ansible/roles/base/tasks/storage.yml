@@ -1,0 +1,64 @@
+- name: Ensure LVM and persistent storage are configured on vdb
+  block:
+    - name: Initialize vdb as physical volume
+      community.general.lvg:
+        vg: vg_homelab
+        pvs: /dev/vdb
+        state: present
+    
+    - name: Create logical volume for homelab data
+      community.general.lvol:
+        vg: vg_homelab
+        lv: lv_data
+        size: 100%VG
+        
+    - name: Create XFS filesystem on LV
+      community.general.filesystem:
+        fstype: xfs
+        dev: /dev/vg_homelab/lv_data
+
+    - name: Ensure mount point directory exists
+      ansible.builtin.file:
+        path: /mnt/storage
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Mount the LV
+      ansible.posix.mount:
+        path: /mnt/storage
+        src: /dev/vg_homelab/lv_data
+        fstype: xfs
+        opts: defaults,nofail
+        state: mounted
+
+- name: Create persistent data directories on vdb
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /mnt/storage/gitlab/config
+    - /mnt/storage/gitlab/runner-config
+    - /mnt/storage/gitlab/logs
+    - /mnt/storage/gitlab/data
+    - /mnt/storage/s3
+    - /mnt/storage/coredns
+    - /mnt/storage/traefik/config
+    - /mnt/storage/traefik/acme
+    - /mnt/storage/grafana
+    - /mnt/storage/vaultwarden/data
+    - /mnt/storage/certs
+
+- name: Ensure Vault host directories exist with correct permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "100"
+    group: "100"
+    mode: '0750'
+  loop:
+    - /mnt/storage/vault/config
+    - /mnt/storage/vault/data
+    - /mnt/storage/vault/certs

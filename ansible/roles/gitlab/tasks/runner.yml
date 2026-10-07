@@ -1,0 +1,26 @@
+---
+- name: Enable podman socket
+  ansible.builtin.systemd_service:
+    name: podman.socket
+    enabled: true
+    state: started
+
+- name: Render gitlab runner config
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: /mnt/storage/gitlab/runner-config/config.toml
+    mode: '0644'
+
+- name: Start gitlab runner container
+  containers.podman.podman_container:
+    name: gitlab-runner
+    image: docker.io/gitlab/gitlab-runner:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - gitlab-runner
+    volumes:
+      - "/run/podman/podman.sock:/var/run/docker.sock:Z"
+      - "/mnt/storage/gitlab/runner-config:/etc/gitlab-runner:Z"
+      - "/mnt/storage/certs:/etc/gitlab-runner/certs:Z"

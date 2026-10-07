@@ -1,0 +1,35 @@
+---
+- name: Set up homelab-net Network
+  containers.podman.podman_network:
+    name: homelab-net
+    disable_dns: false
+
+- name: Change aardvark dns port
+  ansible.builtin.ini_file:
+    path: /etc/containers/containers.conf
+    section: network
+    option: "dns_bind_port"
+    value: "1053"
+
+- name: Disable stub listener (free port 53)
+  community.general.ini_file:
+    path: /etc/systemd/resolved.conf
+    section: Resolve
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: '0644'
+  loop:
+    - { option: 'DNSStubListener', value: 'no' }
+    - { option: 'DNS', value: '127.0.0.1' }
+    - { option: 'Domains', value: '~homelab'}
+
+- name: Ensure systemd-resolved service is running and enabled
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted 
+    enabled: true
+
+- name: Restart systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted

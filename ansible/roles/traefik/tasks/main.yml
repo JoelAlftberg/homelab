@@ -1,0 +1,102 @@
+- name: Check if Traefik wildcard certificate already exists
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "/mnt/storage/traefik/certs/wildcard.homelab.crt"
+    - "/mnt/storage/traefik/certs/wildcard.homelab.key"
+  register: traefik_cert_status
+
+- name: Generate temporary wildcard certs for Traefik
+  block:
+
+  - name: Ensure local temp cert directory exists
+    ansible.builtin.file:
+      path: /tmp/traefik-cert
+      state: directory
+      mode: '0755'
+    delegate_to: localhost
+    become: false
+
+  - name: Ensure container cert directory
+    ansible.builtin.file:
+      path: /mnt/storage/traefik/certs
+      state: directory
+      mode: '0755'
+
+  - name: Generate temp wildcard key 
+    community.crypto.openssl_privatekey:
+      path: /tmp/traefik-cert/wildcard.homelab.key
+      size: 2048
+    delegate_to: localhost
+    become: false
+
+  - name: Generate CSR for temp wildcard 
+    community.crypto.openssl_csr:
+      path: /tmp/traefik-cert/wildcard.homelab.csr
+      privatekey_path: /tmp/traefik-cert/wildcard.homelab.key
+      common_name: "*.homelab"
+    delegate_to: localhost
+    become: false
+
+  - name: Generate self-signed temp wildcard cert 
+    community.crypto.x509_certificate:
+      path: /tmp/traefik-cert/wildcard.homelab.crt
+      privatekey_path: /tmp/traefik-cert/wildcard.homelab.key
+      csr_path: /tmp/traefik-cert/wildcard.homelab.csr
+      provider: selfsigned
+      selfsigned_not_after: "+30d"
+    delegate_to: localhost
+    become: false
+
+  - name: Copy placeholder certs to Traefik storage
+    ansible.builtin.copy:
+      src: "/tmp/traefik-cert/{{ item }}"
+      dest: "/mnt/storage/traefik/certs/{{ item }}"
+      mode: '0600'
+    loop:
+      - wildcard.homelab.key
+      - wildcard.homelab.crt
+
+  when: traefik_cert_status.results | selectattr('stat.exists', 'equalto', false) | list | length > 0
+  tags: [bootstrap, traefik]
+
+- name: Render traefik configs
+  block:
+
+  - name: Render traefik static config from template
+    ansible.builtin.template:
+      src: traefik.j2
+      dest: /mnt/storage/traefik/traefik.yml
+      mode: '0644'
+
+  - name: Render traefik dynamic config from template
+    ansible.builtin.template:
+      src: dynamic.j2
+      dest: /mnt/storage/traefik/config/dynamic.yml
+      mode: '0644'
+
+- name: Start Traefik container
+  containers.podman.podman_container:
+    name: traefik
+    image: docker.io/library/traefik:latest
+    state: started
+    restart_policy: always
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    pull: missing
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "443:443"
+    network: homelab-net
+    network_aliases:
+      - traefik
+    volumes:
+      - "/mnt/storage/traefik:/etc/traefik:Z"
+    command:
+      - "--configfile=/etc/traefik/traefik.yml"

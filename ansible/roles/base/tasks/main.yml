@@ -1,0 +1,10 @@
+---
+- name: Install packages
+  ansible.builtin.package:
+    name: 
+      - podman
+      - xfsprogs # For formating persistent disk
+    state: present
+
+- name: Initialize LVM storage
+  ansible.builtin.include_tasks: storage.yml

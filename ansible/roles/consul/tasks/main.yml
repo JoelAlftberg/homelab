@@ -1,0 +1,16 @@
+---
+- name: Start Consul server container
+  containers.podman.podman_container:
+    name: consul
+    image: docker.io/hashicorp/consul:latest
+    state: started
+    network: homelab-net
+    network_alias: 
+      - consul
+    restart_policy: always
+    command:
+      - "agent"
+      - "-server"
+      - "-bootstrap-expect=1"
+      - "-client=0.0.0.0"
+      - "-ui"
