@@ -2,7 +2,7 @@ prometheus.scrape "node_exporter" {
   targets = [
     {"__address__" = "node-exporter:9100"},
   ]
-  forward_to = [prometheus.remote_write.prometheus.receiver]
+  forward_to = [prometheus.relabel.node_label.receiver]
 }
 
 prometheus.scrape "podman_exporter" {
@@ -10,6 +10,17 @@ prometheus.scrape "podman_exporter" {
     {"__address__" = "podman-exporter:9882"},
   ]
   forward_to = [prometheus.remote_write.prometheus.receiver]
+}
+
+prometheus.relabel "node_label" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+
+  rule {
+    action = "replace"
+    source_labels = ["nodename"]
+    target_label = "host"
+  }
+
 }
 
 prometheus.remote_write "prometheus" {
@@ -20,7 +31,8 @@ prometheus.remote_write "prometheus" {
 }
 
 discovery.docker "podman_socket" {
-  host = "unix:///var/run/docker.sock"
+  host = "tcp://socket-proxy:2375"
+  refresh_interval = "15s"
 
 }
 
@@ -34,15 +46,15 @@ discovery.relabel "docker_labels" {
 }
 
 loki.source.docker "container_logs" {
-  host = "unix:///var/run/docker.sock"
+  host = "tcp://socket-proxy:2375"
   targets = discovery.docker.podman_socket.targets
   forward_to = [loki.process.filter_logs.receiver]
   relabel_rules = discovery.relabel.docker_labels.rules
 }
 
 loki.process "filter_logs" {
-
   forward_to = [loki.write.loki_backend.receiver]
+
 }
 
 loki.write "loki_backend" {

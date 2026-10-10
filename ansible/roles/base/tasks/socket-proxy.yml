@@ -1,0 +1,41 @@
+---
+- name: Enable podman socket
+  ansible.builtin.systemd_service:
+    name: podman.socket
+    enabled: true
+    state: started
+
+- name: Setup socket-proxy container
+  containers.podman.podman_container:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    name: socket-proxy
+    restart_policy: always
+    state: started
+    security_opt:
+      - "label=disable"
+    network: homelab-net
+    network_alias:
+      - socket-proxy
+    read_only: true
+    tmpfs: 
+      "/run": "rw,mode=1777"
+    volumes:
+      - "/var/run/podman/podman.sock:/var/run/docker.sock:ro"
+    env:
+      LIBPOD_CONTAINERS: "1"
+      CONTAINERS: "1"
+      LIBPOD_INFO: "1"
+      INFO: "1"
+      LIBPOD_IMAGES: "1"
+      IMAGES: "1"
+      LIBPOD_PODS: "1"
+      PODS: "1"
+      LIBPOD_NETWORKS: "1"
+      NETWORKS: "1"
+      LIBPOD_EVENTS: "1"
+      EVENTS: "1"
+      LIBPOD_VOLUMES: "1"
+      VOLUMES: "1"
+      ALLOW_LOGS: "1"
+      LOG_LEVEL: "warning"
+

@@ -44,14 +44,15 @@
     VAULT_TOKEN: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
   
   tasks:
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: base
+      tags:
+        - base
 
-    - ansible.builtin.include_role:
-        name: network
-
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: coredns 
+      tags: 
+        - dns
 
     - ansible.builtin.include_role:
         name: traefik 
