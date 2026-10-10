@@ -7,18 +7,18 @@ resource "libvirt_network" "homelab_net" {
   }
 
   domain = {
-    name = "homelab.local"
+    name = var.internal_domain
   }
 
   ips = [
     {
-      address = "10.22.1.1"
-      netmask = "255.255.255.0"
+      address = local.gateway
+      netmask = cidrnetmask(var.network_cidr)
       dhcp = {
         ranges = [
           {
-            start = "10.22.1.2"
-            end   = "10.22.1.254"
+            start = cidrhost(var.network_cidr, 200)
+            end   = cidrhost(var.network_cidr, 250)
           }
         ]
       }

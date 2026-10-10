@@ -64,7 +64,7 @@ resource "libvirt_domain" "vm" {
   name    = "${var.environment}-${var.role}-${format("%02d", count.index + 1)}"
   memory = var.memory
   memory_unit = "MiB"
-  vcpu   = 2
+  vcpu   = var.vcpu
   type   = "kvm"    
   running = true
 
