@@ -1,0 +1,63 @@
+---
+- name: Verify that grafana directory is present
+  ansible.builtin.file:
+    path: /mnt/storage/grafana
+    state: directory
+    owner: "472"
+    group: "472"
+    mode: '0755'
+    recurse: yes
+
+- name: Setup Grafana container
+  containers.podman.podman_container:
+    name: grafana
+    image: docker.io/grafana/grafana-oss:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - grafana
+    volumes:
+      - "/mnt/storage/grafana:/var/lib/grafana:Z"
+
+- name: Render Grafana Loki config
+  ansible.builtin.template:
+    src: loki-config.yaml.j2
+    dest: /mnt/storage/loki/loki-config.yaml
+  notify: Restart loki container
+
+- name: Setup Grafana Loki container
+  containers.podman.podman_container:
+    name: loki
+    image: docker.io/grafana/loki:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - loki
+    volumes:
+      - "/mnt/storage/loki:/mnt/config:Z"
+    command:
+      - "-config.file=/mnt/config/loki-config.yaml"
+
+- name: Render Prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /mnt/storage/prometheus/config/prometheus.yml
+    mode: '0755'
+
+- name: Start Prometheus container
+  containers.podman.podman_container:
+    name: prometheus
+    image: docker.io/prom/prometheus:latest
+    state: started
+    restart_policy: always
+    network: homelab-net
+    network_alias:
+      - prometheus
+    volumes:
+      - "/mnt/storage/prometheus/config:/etc/prometheus:Z"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-remote-write-receiver"
+

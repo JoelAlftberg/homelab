@@ -44,14 +44,15 @@
     VAULT_TOKEN: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
   
   tasks:
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: base
+      tags:
+        - base
 
-    - ansible.builtin.include_role:
-        name: network
-
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: coredns 
+      tags: 
+        - dns
 
     - ansible.builtin.include_role:
         name: traefik 
@@ -62,8 +63,10 @@
     - ansible.builtin.include_role:
         name: pki_bridge
 
-    - ansible.builtin.include_role:
+    - ansible.builtin.import_role:
         name: gitlab
+      tags:
+        - gitlab
     
     - ansible.builtin.include_role:
         name: vaultwarden
@@ -74,8 +77,13 @@
     - ansible.builtin.include_role:
         name: consul 
 
-    - ansible.builtin.include_role:
-        name: grafana
+    - ansible.builtin.import_role:
+        name: lgtm-stack 
+      tags:
+        - telemetry
 
-    - ansible.builtin.include_role:
-        name: prometheus
+    - ansible.builtin.import_role:
+        name: telemetry 
+      tags:
+        - telemetry
+      

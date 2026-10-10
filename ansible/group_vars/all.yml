@@ -28,6 +28,14 @@ app_services:
     service: prometheus
     internal_port: 9090
     protocol: "http"
+  - name: loki
+    service: loki
+    internal_port: 3100
+    protocol: "http"
+  - name: alloy
+    service: alloy
+    internal_port: 12345
+    protocol: "http"
 
 ansible_user: fedora
 ansible_python_interpreter: "/usr/bin/python3"

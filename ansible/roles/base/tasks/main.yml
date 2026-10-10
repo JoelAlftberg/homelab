@@ -8,3 +8,9 @@
 
 - name: Initialize LVM storage
   ansible.builtin.include_tasks: storage.yml
+
+- name: Initialize network
+  ansible.builtin.include_tasks: network.yml
+
+- name: Set up podman.socket proxy
+  ansible.builtin.include_tasks: socket-proxy.yml

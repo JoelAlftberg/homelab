@@ -47,10 +47,12 @@
     - /mnt/storage/coredns
     - /mnt/storage/traefik/config
     - /mnt/storage/traefik/acme
-    - /mnt/storage/grafana
     - /mnt/storage/vaultwarden/data
     - /mnt/storage/certs
     - /mnt/storage/prometheus/config
+    - /mnt/storage/alloy/config
+    - /mnt/storage/alloy/data
+    - /mnt/storage/loki/
 
 - name: Ensure Vault host directories exist with correct permissions
   ansible.builtin.file:

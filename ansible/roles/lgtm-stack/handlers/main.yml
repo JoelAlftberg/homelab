@@ -1,0 +1,6 @@
+---
+- name: Restart loki container
+  containers.podman.podman_container:
+    name: loki
+    state: started
+    restart: true
