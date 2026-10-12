@@ -12,6 +12,7 @@ module "control_plane" {
   backing_store_path = libvirt_volume.ubuntu_base.path
   vm_ips = local.control_plane_ips
   gateway_ip = local.gateway
+  prefix = local.prefix
 }
 
 module "worker_nodes" {
@@ -27,12 +28,13 @@ module "worker_nodes" {
   backing_store_path = libvirt_volume.ubuntu_base.path
   vm_ips = local.cluster_worker_ips
   gateway_ip = local.gateway
+  prefix = local.prefix
 }
 
 
 module "services" {
   source = "./modules/vm"
-  environment = "prod"
+  environment = var.environment
   role ="services"
   node_count = 1
   memory = 8192
@@ -43,5 +45,6 @@ module "services" {
   backing_store_path = libvirt_volume.ubuntu_base.path
   vm_ips = local.service_host_ip
   gateway_ip = local.gateway
+  prefix = local.prefix
 }
 

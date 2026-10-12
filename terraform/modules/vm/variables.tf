@@ -1,7 +1,3 @@
-variable "network_cidr" {
-  default = "10.22.1.0/24"
-}
-
 variable "ssh_public_key" {
     type = string
     description = "The public SSH key passed down from root config"
@@ -41,4 +37,16 @@ variable "network_name" {
 
 variable "backing_store_path" {
   type = string
+}
+
+variable "vm_ips" {
+  type = list(string)
+}
+
+variable "gateway_ip" {
+  type = string
+}
+
+variable "prefix" {
+  type = number
 }
