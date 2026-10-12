@@ -39,7 +39,11 @@ resource "libvirt_cloudinit_disk" "init" {
     count = var.node_count
     name = "${var.environment}-${var.role}-${format("%02d", count.index + 1)}"
     user_data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", { ssh_public_key = var.ssh_public_key})
-    network_config = templatefile("${path.module}/templates/network-config.yaml.tftpl", {vm_ip = var.vm_ips[count.index], gateway_ip = var.gateway_ip}) 
+    network_config = templatefile("${path.module}/templates/network-config.yaml.tftpl", {
+      vm_ip = var.vm_ips[count.index],
+      gateway_ip = var.gateway_ip
+      prefix = var.prefix
+    }) 
 
     meta_data = yamlencode({
         instance_id = "${var.environment}-${var.role}-${format("%02d", count.index + 1)}"
@@ -64,7 +68,7 @@ resource "libvirt_domain" "vm" {
   name    = "${var.environment}-${var.role}-${format("%02d", count.index + 1)}"
   memory = var.memory
   memory_unit = "MiB"
-  vcpu   = 2
+  vcpu   = var.vcpu
   type   = "kvm"    
   running = true
 
@@ -76,6 +80,10 @@ resource "libvirt_domain" "vm" {
     type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [{ dev = "hd" } ]
+  }
+
+  cpu = {
+    mode = "host-passthrough"
   }
 
   devices = {

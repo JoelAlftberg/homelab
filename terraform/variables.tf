@@ -1,6 +1,11 @@
 variable "environment" {
   type    = string
-  default = "staging"
+  default = "lab"
+}
+
+variable "internal_domain" {
+  type = string
+  default = "lab.alftberg.net"
 }
 
 variable "control_plane_count" {
@@ -13,8 +18,11 @@ variable "cluster_worker_count" {
   default = 2
 }
 
-variable "fedora_version" {
+variable "ubuntu_release" {
   type    = string
-  default = "44"
+  default = "noble"
 }
 
+variable "network_cidr" {
+  default = "10.22.1.0/24"
+}

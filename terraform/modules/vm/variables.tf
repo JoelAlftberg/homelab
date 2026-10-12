@@ -1,5 +1,3 @@
-# modules/vm/variables.tf
-
 variable "ssh_public_key" {
     type = string
     description = "The public SSH key passed down from root config"
@@ -49,3 +47,6 @@ variable "gateway_ip" {
   type = string
 }
 
+variable "prefix" {
+  type = number
+}
