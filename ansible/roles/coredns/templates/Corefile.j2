@@ -4,17 +4,8 @@
     errors
 }
 
-homelab:53 {
-    
-    hosts {
-        10.22.1.10 staging-k8s-control-plane-01.homelab
-        10.22.1.11 staging-k8s-worker-01.homelab
-        10.22.1.12 staging-k8s-worker-02.homelab
-        {{ service_host_ip }} *.homelab
-        fallthrough
-    }
-
-    forward . 1.1.1.1 8.8.8.8
+alftberg.net:53 {
+    file /etc/coredns/alftberg.net.zone
     cache 30
     errors
 }

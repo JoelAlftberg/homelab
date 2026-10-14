@@ -33,27 +33,27 @@
         wg_password: "{{wg_password }}"
         cacheable: true
 
+#- name: Configure KVM Host
+#  hosts: local
+#  become: true
+#  roles:
+#    - kvm
 
-- name: Configure KVM Host
-  hosts: local
-  become: true
-  roles:
-    - kvm
-
-- name: Configure Service Host
-  hosts: services
-  become: true
-  roles:
-    - podman
-    - base
-    - socket-proxy
-    - gitlab
-    - vaultwarden
+#- name: Configure Service Host
+#  hosts: services
+#  become: true
+#  roles:
+#    - podman
+#    - base
+#    - socket-proxy
+#    - gitlab
+#    - vaultwarden
 
 - name: Configure Utility Host
   hosts: utility
   become: true
   roles:
     - podman
+    - coredns
     - wireguard
     - traefik

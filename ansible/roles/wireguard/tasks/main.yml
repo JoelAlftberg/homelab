@@ -43,6 +43,8 @@
       net.ipv4.conf.all.src_valid_mark: "1"
     network:
       - wg
+    network_alias:
+      - wg-easy
     volumes:
       - "/mnt/storage/wireguard/config:/etc/config:Z"
       - "/lib/modules:/lib/modules"
