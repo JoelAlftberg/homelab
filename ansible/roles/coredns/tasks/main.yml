@@ -1,14 +1,22 @@
 ---
-- name: Ensure CoreDNS data directories exists 
+- name: Create storage for CoreDNS 
   ansible.builtin.file:
-    path: /mnt/storage/coredns
+    path: "{{ item }}"
     state: directory
     mode: '0755'
+  loop:
+    - /mnt/storage/coredns
 
 - name: Render CoreDNS Corefile from template
   ansible.builtin.template:
     src: Corefile.j2
     dest: /mnt/storage/coredns/Corefile
+    mode: '0644'
+
+- name: Copy CoreDNS zone file for alftberg.net
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/roles/coredns/templates/alftberg.net.zone"
+    dest: "/mnt/storage/coredns/alftberg.net.zone"
     mode: '0644'
 
 - name: Start CoreDNS container
@@ -19,8 +27,6 @@
     restart_policy: always
     command: "-conf /etc/coredns/Corefile"
     pull: missing
-    ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+    network: host
     volumes:
-      - "/mnt/storage/coredns/Corefile:/etc/coredns/Corefile:Z"
+      - "/mnt/storage/coredns:/etc/coredns:Z"

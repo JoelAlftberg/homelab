@@ -14,9 +14,6 @@
     name: gitlab
     image: docker.io/gitlab/gitlab-ce:19.2.7-ce.0
     state: started
-    network: homelab-net
-    network_alias: 
-      - gitlab
     restart_policy: always
     volumes:
       - "/mnt/storage/gitlab/config:/etc/gitlab:Z"
