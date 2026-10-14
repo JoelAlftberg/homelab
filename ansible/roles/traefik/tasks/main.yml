@@ -1,102 +1,52 @@
-- name: Check if Traefik wildcard certificate already exists
-  ansible.builtin.stat:
+- name: Create storage for traefik
+  ansible.builtin.file:
     path: "{{ item }}"
+    state: directory
+    mode: '0755'
   loop:
-    - "/mnt/storage/traefik/certs/wildcard.homelab.crt"
-    - "/mnt/storage/traefik/certs/wildcard.homelab.key"
-  register: traefik_cert_status
+    - /mnt/storage/traefik/config
+    - /mnt/storage/traefik/acme
 
-- name: Generate temporary wildcard certs for Traefik
-  block:
+- name: Copy configs
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/traefik/{{ traefik_name }}/"
+    dest: "/mnt/storage/traefik-{{ traefik_name }}/config"
+    mode: "0644"
+  notify: restart traefik
 
-  - name: Ensure local temp cert directory exists
-    ansible.builtin.file:
-      path: /tmp/traefik-cert
-      state: directory
-      mode: '0755'
-    delegate_to: localhost
-    become: false
+- name: Require the token
+  ansible.builtin.assert:
+    that: cloudflare_api_token | length > 0
 
-  - name: Ensure container cert directory
-    ansible.builtin.file:
-      path: /mnt/storage/traefik/certs
-      state: directory
-      mode: '0755'
+- name: Cloudflare token
+  containers.podman.podman_secret:
+    name: cf_dns_token
+    data: "{{ cloudflare_api_token }}"
+    force: true
+  no_log: true
 
-  - name: Generate temp wildcard key 
-    community.crypto.openssl_privatekey:
-      path: /tmp/traefik-cert/wildcard.homelab.key
-      size: 2048
-    delegate_to: localhost
-    become: false
-
-  - name: Generate CSR for temp wildcard 
-    community.crypto.openssl_csr:
-      path: /tmp/traefik-cert/wildcard.homelab.csr
-      privatekey_path: /tmp/traefik-cert/wildcard.homelab.key
-      common_name: "*.homelab"
-    delegate_to: localhost
-    become: false
-
-  - name: Generate self-signed temp wildcard cert 
-    community.crypto.x509_certificate:
-      path: /tmp/traefik-cert/wildcard.homelab.crt
-      privatekey_path: /tmp/traefik-cert/wildcard.homelab.key
-      csr_path: /tmp/traefik-cert/wildcard.homelab.csr
-      provider: selfsigned
-      selfsigned_not_after: "+30d"
-    delegate_to: localhost
-    become: false
-
-  - name: Copy placeholder certs to Traefik storage
-    ansible.builtin.copy:
-      src: "/tmp/traefik-cert/{{ item }}"
-      dest: "/mnt/storage/traefik/certs/{{ item }}"
-      mode: '0600'
-    loop:
-      - wildcard.homelab.key
-      - wildcard.homelab.crt
-
-  when: traefik_cert_status.results | selectattr('stat.exists', 'equalto', false) | list | length > 0
-  tags: [bootstrap, traefik]
-
-- name: Render traefik configs
-  block:
-
-  - name: Render traefik static config from template
-    ansible.builtin.template:
-      src: traefik.j2
-      dest: /mnt/storage/traefik/traefik.yml
-      mode: '0644'
-
-  - name: Render traefik dynamic config from template
-    ansible.builtin.template:
-      src: dynamic.j2
-      dest: /mnt/storage/traefik/config/dynamic.yml
-      mode: '0644'
+- name: Network
+  containers.podman.podman_network:
+    name: "{{ traefik_network }}"
+  when: traefik_network is defined
 
 - name: Start Traefik container
   containers.podman.podman_container:
-    name: traefik
+    name: traefik-{{ traefik_name }}
     image: docker.io/library/traefik:latest
     state: started
     restart_policy: always
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
-    pull: missing
+    network: "{{ [traefik_network] if traefik_network is defined else omit }}"
     ports:
-      - "80:80"
-      - "8080:8080"
-      - "443:443"
-    network: homelab-net
-    network_aliases:
-      - traefik
-    volumes:
-      - "/mnt/storage/traefik:/etc/traefik:Z"
+      - "{{ traefik_publish }}"
+    volumes: 
+      - "/mnt/storage/traefik-{{ traefik_name }}/config:/etc/traefik:Z"
+      - "{% if traefik_socket | default(false) %}/run/podman/podman.sock:/var/run/docker.sock:ro{% endif %}"
+    secrets:
+      - cf_dns_token,type=env,target=CF_DNS_API_TOKEN
     command:
       - "--configfile=/etc/traefik/traefik.yml"

@@ -5,13 +5,17 @@ terraform {
       source  = "dmacvicar/libvirt"
       version = "0.9.9"
     }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
+    cloudflare = {
+      source = "cloudflare/cloudflare"
+      version = "~> 5"
     }
   }
 }
 
 provider "libvirt" {
   uri = "qemu:///system"
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }

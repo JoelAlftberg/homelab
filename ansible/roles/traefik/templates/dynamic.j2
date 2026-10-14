@@ -1,27 +1,13 @@
 tls:
-  certificates:
-    - certFile: /etc/traefik/certs/wildcard.homelab.crt
-      keyFile: /etc/traefik/certs/wildcard.homelab.key
 
 http:
   routers:
 {% for service in app_services %}
     {{ service.name}}-router:
-      rule: "Host(`{{ service.service}}.homelab`){% if service.path_prefix is defined %} && PathPrefix(`{{ service.path_prefix }}`){% endif %}"
+      rule: "Host(`{{ service.subdomain | default(service.name) }}.alftberg.net `)"
       service: {{ service.name}}-service
-      {% if service.strip_prefix is defined %}middlewares:
-        - {{ service.name }}-strip
-      {% endif %}tls: {}
-{% endfor %}
-
-  middlewares:
-{% for service in app_services %}
-  {%- if service.strip_prefix is defined %}
-    {{ service.name }}-strip:
-      stripPrefix:
-        prefixes:
-          - {{ service.strip_prefix}}
-  {% endif %}
+      tls:
+        certResolver: letsencrypt
 {% endfor %}
 
   services:
@@ -29,5 +15,5 @@ http:
     {{ service.name}}-service:
       loadBalancer:
         servers:
-          - url: "{{ service.protocol }}://{{ service.service}}:{{ service.internal_port }}"
+          - url: "{{ service.protocol }}://{{ service.name}}:{{ service.internal_port }}"
 {% endfor %}

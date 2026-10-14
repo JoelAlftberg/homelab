@@ -3,7 +3,7 @@ resource "libvirt_network" "homelab_net" {
   autostart = true
 
   forward = {
-    mode = "nat"
+    mode = "open"
   }
 
   domain = {

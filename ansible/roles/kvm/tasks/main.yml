@@ -13,10 +13,10 @@
     state: present
 
 - name: Ensure libvirtd service is enabled and started
-  ansible.builtin.service:
+  ansible.builtin.systemd_service:
     name: libvirtd
     state: started
-    enabled: yes
+    enabled: true
 
 - name: Add current user to the libvirt group
   ansible.builtin.user:
@@ -41,4 +41,41 @@
     name: terraform
     state: present
     update_cache: yes
+
+
+- name: Forward WireGuard UDP port 51820 to utility VM
+  ansible.builtin.iptables:
+    table: nat
+    chain: PREROUTING
+    protocol: udp
+    destination_port: "51820"
+    jump: DNAT
+    to_destination: "10.22.1.101:51820"
+    comment: "Forward WireGuard to lab-utility-01"
+
+- name: Forward Wg-Easy TCP port 51821 to utility VM
+  ansible.builtin.iptables:
+    table: nat
+    chain: PREROUTING
+    protocol: tcp
+    destination_port: "51821"
+    jump: DNAT
+    to_destination: "10.22.1.101:51821"
+    comment: "Forward Wg-Easy Web UI to lab-utility-01"
+
+- name: Allow forwarded UDP traffic to utility VM
+  ansible.builtin.iptables:
+    chain: FORWARD
+    protocol: udp
+    destination: "10.22.1.101"
+    destination_port: "51820"
+    jump: ACCEPT
+
+- name: Allow forwarded TCP traffic to utility VM
+  ansible.builtin.iptables:
+    chain: FORWARD
+    protocol: tcp
+    destination: "10.22.1.101"
+    destination_port: "51821"
+    jump: ACCEPT
 

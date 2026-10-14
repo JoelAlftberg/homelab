@@ -2,10 +2,9 @@ concurrent = 4
 check_interval = 0
 
 [[runners]]
-  name = "homelab-podman-runner"
-  url = "https://gitlab.homelab/"
+  name = "podman-runner"
+  url = "https://gitlab.alftberg.net/"
   token = "{{ gitlab_runner_token }}"
-  tls-ca-file = "/etc/gitlab-runner/certs/gitlab.homelab.crt"
   tls-verify = false
   request_concurrency = 2
   executor = "docker"
