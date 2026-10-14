@@ -21,7 +21,7 @@
   loop:
     - { option: 'DNSStubListener', value: 'no' }
     - { option: 'DNS', value: '127.0.0.1' }
-    - { option: 'Domains', value: '~homelab'}
+    - { option: 'Domains', value: '~alftberg.net'}
 
 - name: Ensure systemd-resolved service is running and enabled
   ansible.builtin.systemd:

@@ -1,0 +1,24 @@
+entryPoints:
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  cf:
+    acme:
+      email: joel@alftberg.net
+      storage: /etc/traefik/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - 1.1.1.1:53
+
+accessLog:
+  format: json
+
+log:
+  level: INFO

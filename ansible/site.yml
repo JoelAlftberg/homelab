@@ -1,7 +1,7 @@
 ---
-- hosts: services
-  become: true
-
+- name: Prompt for deployment variables
+  hosts: all
+  gather_facts: false
   vars_prompt:
     - name: ssh_key_path
       prompt: "Enter the path to the Day-0 Terraform private key"
@@ -14,76 +14,46 @@
       confirm: true
       default: "change_this_after_first_boot"
 
-    - name: gitlab_runner_token
-      prompt: "Enter the GitLab runner token"
+    - name: cloudflare_api_token
+      prompt: "Enter the Cloudflare API token"
       private: true
-      default: "token"
+      default: ""
 
-  pre_tasks:
-    - name: Ensure hvac library is installed on this host for vault bootstrapping 
-      ansible.builtin.pip:
-        name: hvac
-        state: present
-        extra_args: "--user"
-      delegate_to: localhost
-      become: false
+    - name: wg_password
+      prompt: "Enter the WireGuard password"
+      private: true
+      confirm: true
 
-  vars:
-    vault_url: "https://vault.homelab"
-    root_lease_ttl: "87600h"
-    intermediate_lease_ttl: "43800h"
-    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
-    gitlab_root_pass: "{{ gitlab_initial_pass }}"
-    service_host_ip: "10.22.1.100"
-    traefik_internal_ip: "10.89.1.10"
-
-
-  environment:
-    VAULT_ADDR: "{{ vault_url }}"
-    VAULT_SKIP_VERIFY: "true"
-    VAULT_TOKEN: "{{ active_vault_token | default(lookup('env', 'VAULT_TOKEN'), true) }}"
-  
   tasks:
-    - ansible.builtin.import_role:
-        name: base
-      tags:
-        - base
+    - name: Pass variables to host groups
+      ansible.builtin.set_fact:
+        ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+        gitlab_root_pass: "{{ gitlab_initial_pass }}"
+        cloudflare_api_token: "{{ cloudflare_api_token }}"
+        wg_password: "{{wg_password }}"
+        cacheable: true
 
-    - ansible.builtin.import_role:
-        name: coredns 
-      tags: 
-        - dns
 
-    - ansible.builtin.include_role:
-        name: traefik 
+- name: Configure KVM Host
+  hosts: local
+  become: true
+  roles:
+    - kvm
 
-    - ansible.builtin.include_role:
-        name: vault 
-    
-    - ansible.builtin.include_role:
-        name: pki_bridge
+- name: Configure Service Host
+  hosts: services
+  become: true
+  roles:
+    - podman
+    - base
+    - socket-proxy
+    - gitlab
+    - vaultwarden
 
-    - ansible.builtin.import_role:
-        name: gitlab
-      tags:
-        - gitlab
-    
-    - ansible.builtin.include_role:
-        name: vaultwarden
-
-    - ansible.builtin.include_role:
-        name: s3
-
-    - ansible.builtin.include_role:
-        name: consul 
-
-    - ansible.builtin.import_role:
-        name: lgtm-stack 
-      tags:
-        - telemetry
-
-    - ansible.builtin.import_role:
-        name: telemetry 
-      tags:
-        - telemetry
-      
+- name: Configure Utility Host
+  hosts: utility
+  become: true
+  roles:
+    - podman
+    - wireguard
+    - traefik

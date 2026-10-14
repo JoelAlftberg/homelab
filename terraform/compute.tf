@@ -48,3 +48,19 @@ module "services" {
   prefix = local.prefix
 }
 
+module "utility" {
+  source = "./modules/vm"
+  environment = var.environment
+  role = "utility"
+  node_count = 1
+  memory = 1024
+  vcpu = 1
+  pool_name = libvirt_pool.homelab_pool.name
+  network_name = libvirt_network.homelab_net.name
+  ssh_public_key = tls_private_key.ssh.public_key_openssh
+  backing_store_path = libvirt_volume.ubuntu_base.path
+  vm_ips = local.utility_host_ip
+  gateway_ip = local.gateway
+  prefix = local.prefix
+
+}

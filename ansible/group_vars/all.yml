@@ -1,41 +1,11 @@
 ---
 app_services:
-  - name: vault
-    service: vault
-    internal_port: 8200
-    protocol: "http"
   - name: gitlab
-    service: gitlab
     internal_port: 80
-    protocol: "http"
-  - name: consul
-    service: consul
-    internal_port: 8500
-    protocol: "http"
-  - name: grafana
-    service: grafana
-    internal_port: 3000
-    protocol: "http"
-  - name: s3
-    service: s3
-    internal_port: 8333
     protocol: "http"
   - name: vaultwarden
-    service: vaultwarden
     internal_port: 80
     protocol: "http"
-  - name: prometheus
-    service: prometheus
-    internal_port: 9090
-    protocol: "http"
-  - name: loki
-    service: loki
-    internal_port: 3100
-    protocol: "http"
-  - name: alloy
-    service: alloy
-    internal_port: 12345
-    protocol: "http"
 
-ansible_user: fedora
+ansible_user: ubuntu
 ansible_python_interpreter: "/usr/bin/python3"

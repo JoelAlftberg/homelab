@@ -1,0 +1,24 @@
+http:
+  routers:
+    vpn-gui:
+      rule: Host(`vpn-gui.alftberg.net`)
+      entryPoints:
+        - websecure
+      service: wg-easy
+      tls:
+        certResolver: cf
+
+  services:
+    wg-easy:
+      loadBalancer:
+        servers:
+          - url: http://wg-easy:51821
+
+#tls:
+#  options:
+#    default:
+#      minVersion: VersionTLS12
+#      clientAuth:
+#        caFiles:
+#          - /mnt/storage/traefik/client-certs/client-ca.pem
+#        clientAuthType: RequireAndVerifyClientCert

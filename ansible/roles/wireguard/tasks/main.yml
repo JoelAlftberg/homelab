@@ -1,0 +1,48 @@
+---
+- name: Create storage for wireguard 
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /mnt/storage/wireguard/config
+
+- name: Install wireguard kernel module
+  ansible.builtin.package:
+    name:
+      - wireguard-tools
+
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_set: true
+    reload: true
+  ignore_errors: true
+
+- name: Network
+  containers.podman.podman_network:
+    name: wg
+
+- name: Start WireGuard container
+  containers.podman.podman_container:
+    name: wg-easy
+    image: ghcr.io/wg-easy/wg-easy
+    state: started
+    restart_policy: always
+    ports:
+      - "51820:51820/udp"
+    env:
+      PASSWORD_HASH: "{{ wg_password | password_hash('bcrypt') }}"
+      WG_HOST: "vpn.alftberg.net"
+      WG_ALLOWED_IPS: "10.8.0.0/24, 10.22.1.0/24"
+    privileged: true
+    sysctl:
+      net.ipv4.ip_forward: "1"
+      net.ipv4.conf.all.src_valid_mark: "1"
+    network:
+      - wg
+    volumes:
+      - "/mnt/storage/wireguard/config:/etc/config:Z"
+      - "/lib/modules:/lib/modules"
