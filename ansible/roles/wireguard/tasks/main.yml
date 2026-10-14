@@ -21,10 +21,6 @@
     reload: true
   ignore_errors: true
 
-- name: Network
-  containers.podman.podman_network:
-    name: wg
-
 - name: Start WireGuard container
   containers.podman.podman_container:
     name: wg-easy

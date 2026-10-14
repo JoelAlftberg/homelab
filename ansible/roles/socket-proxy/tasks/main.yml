@@ -13,7 +13,7 @@
     state: started
     security_opt:
       - "label=disable"
-    network: homelab-net
+    network: "{{ podman_network }}"
     network_alias:
       - socket-proxy
     read_only: true

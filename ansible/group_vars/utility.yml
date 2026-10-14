@@ -1,3 +1,5 @@
 traefik_name: public
 traefik_network: wg
 traefik_publish: "443:443/tcp"
+podman_network: wg
+dns_host: true

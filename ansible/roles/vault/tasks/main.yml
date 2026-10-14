@@ -1,6 +1,33 @@
 ---
-- name: Run core Vault setup and deployment
-  ansible.builtin.include_tasks: vault.yml
+- name: Create storage for Vault
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "100"
+    group: "100"
+    mode: '0755'
+  loop:
+    - /mnt/storage/vault/config
+    - /mnt/storage/vault/data
 
-- name: Configure Vault PKI and bootstrap certs
-  ansible.builtin.include_tasks: pki.yml
+- name: Render Vault config
+  ansible.builtin.template:
+    src: vault.j2
+    dest: /mnt/storage/vault/config/vault.hcl
+    mode: '0644'
+
+- name: Start Vault container
+  containers.podman.podman_container:
+    name: vault
+    image: docker.io/hashicorp/vault:latest
+    command: server
+    network: "{{ podman_network }}"
+    state: started
+    restart_policy: always
+    volumes:
+      - "/mnt/storage/vault/config:/vault/config:ro,Z"
+      - "/mnt/storage/vault/data:/vault/data:Z"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vault.rule: Host(`vault.alftberg.net`)
+      traefik.http.services.vault.loadbalancer.server.port: "8200"

@@ -11,10 +11,12 @@
   containers.podman.podman_container:
     name: vaultwarden
     image: docker.io/vaultwarden/server:latest
-    network: homelab-net
-    network_alias:
-      - vaultwarden
+    network: "{{ podman_network }}"
     state: started
     restart_policy: always
     volumes:
       - "/mnt/storage/vaultwarden/data:/data:Z"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.vaultwarden.rule: Host(`vaultwarden.alftberg.net`)
+      traefik.http.services.vaultwarden.loadbalancer.server.port: "80"

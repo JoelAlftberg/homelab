@@ -40,9 +40,9 @@
       - ALL
     cap_add:
       - NET_BIND_SERVICE
-    network: "{{ [traefik_network] if traefik_network is defined else omit }}"
+    network: "{{ [podman_network] if podman_network is defined else omit }}"
     network_alias:
-      - "{{ ['treafik-{{ traefik_name }}'] if traefik_network is defined else omit }}"
+      - "{{ ['treafik-{{ traefik_name }}'] if dns_host is defined else omit }}"
     ports:
       - "{{ traefik_publish }}"
     volumes: 
