@@ -18,6 +18,10 @@
     - { option: 'DNS', value: '10.22.1.101' }
     - { option: 'Domains', value: '~alftberg.net'}
 
+- name: Network
+  containers.podman.podman_network:
+    name: "{{ podman_network }}"
+
 - name: Ensure systemd-resolved service is running and enabled
   ansible.builtin.systemd:
     name: systemd-resolved

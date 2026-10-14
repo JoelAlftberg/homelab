@@ -39,15 +39,17 @@
 #  roles:
 #    - kvm
 
-#- name: Configure Service Host
-#  hosts: services
-#  become: true
-#  roles:
-#    - podman
-#    - base
-#    - socket-proxy
+- name: Configure Service Host
+  hosts: services
+  become: true
+  roles:
+    - podman
+    - base
+    - socket-proxy
+    - traefik
+    - vaultwarden
+    - vault
 #    - gitlab
-#    - vaultwarden
 
 - name: Configure Utility Host
   hosts: utility
