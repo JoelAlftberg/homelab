@@ -1,5 +1,5 @@
 ---
-- name: Create storage for CoreDNS 
+- name: Create storage for CoreDNS
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory

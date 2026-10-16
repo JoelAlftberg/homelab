@@ -1,0 +1,95 @@
+---
+- name: Provision CA, SSH and secrets
+  module_defaults:
+    ansible.builtin.uri:
+      headers:
+        X-Vault-Token: "{{ vault_token }}"
+      validate_certs: "{{ vault_validate_certs | default(true) }}"
+      body_format: json
+      return_content: true
+
+  block:
+
+    - name: Enable SSH secrets engine
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/mounts/ssh"
+        method: POST
+        body: { type: ssh }
+        status_code: [200, 204]
+      when: "'ssh/' not in vault_mounts"
+
+    - name: Enable KV v2
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/mounts/kv"
+        method: POST
+        body: { type: kv, options: { version: "2"} }
+        status_code: [200, 204]
+      when: "'kv/' not in vault_mounts"
+
+    - name: Generate SSH CA signing key
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/ssh/config/ca"
+        method: POST
+        body: { generate_signing_key: true, key_type: ssh-ed25519 }
+        status_code: [200, 204]
+      when: ca_check.status != 200
+
+    - name: Write ansible signing role
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/ssh/roles/ansible"
+        method: POST
+        body:
+          key_type: ca
+          allow_user_certificates: true
+          allowed_users: ansible
+          default_user: ansible
+          ttl: 10m
+          max_ttl: 30m
+        status_code: [200, 204]
+
+    - name: Write CI policy
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/policies/acl/ci"
+        method: PUT
+        body:
+          policy: |
+            path "ssh/sign/ansible"   { capabilities = ["update"] }
+            path "kv/data/ci/*"       { capabilities = ["read"] }
+            path "kv/metadata/ci/*"   { capabilities = ["list", "read"] }
+            path "sys/mounts"         { capabilities = ["read"] }
+        status_code: [200, 204]
+
+    - name: Write services policy
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/policies/acl/services"
+        method: PUT
+        body:
+          policy: |
+            path "kv/data/infra/*"    { capabilities = ["read"] }
+            path "kv/data/services/*"    { capabilities = ["read"] }
+        status_code: [200, 204]
+
+    - name: Check for existing secrets
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/kv/data/{{ item.path}}"
+        status_code: [200, 404]
+      loop: "{{ vault_seed_secrets }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: existing_secrets
+      changed_when: false
+      no_log: true
+
+    - name: Seed day-0 secrets if absent
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/kv/data/{{ item.item.path }}"
+        method: POST
+        body:
+          data:
+            value: "{{ item.item.value }}"
+        status_code: [200, 204]
+      loop: "{{ existing_secrets.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+      when: item.status == 404
+      no_log: true

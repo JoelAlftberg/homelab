@@ -1,5 +1,5 @@
 ---
-- name: Create storage for wireguard 
+- name: Create storage for wireguard
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory

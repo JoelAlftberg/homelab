@@ -2,7 +2,7 @@
   block:
     - name: Install packages
       ansible.builtin.package:
-        name: 
+        name:
           - xfsprogs # For formating persistent disk
         state: present
 
@@ -11,13 +11,13 @@
         vg: vg_homelab
         pvs: /dev/vdb
         state: present
-    
+
     - name: Create logical volume for homelab data
       community.general.lvol:
         vg: vg_homelab
         lv: lv_data
         size: 100%VG
-        
+
     - name: Create XFS filesystem on LV
       community.general.filesystem:
         fstype: xfs

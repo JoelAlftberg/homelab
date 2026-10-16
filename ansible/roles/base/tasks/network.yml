@@ -14,7 +14,7 @@
 - name: Ensure systemd-resolved service is running and enabled
   ansible.builtin.systemd:
     name: systemd-resolved
-    state: restarted 
+    state: restarted
     enabled: true
 
 - name: Restart systemd-resolved

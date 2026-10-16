@@ -17,7 +17,7 @@
     network_alias:
       - socket-proxy
     read_only: true
-    tmpfs: 
+    tmpfs:
       "/run": "rw,mode=1777"
     volumes:
       - "/var/run/podman/podman.sock:/var/run/docker.sock:ro"

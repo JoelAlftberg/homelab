@@ -19,9 +19,10 @@
 - name: Start Vault container
   containers.podman.podman_container:
     name: vault
-    image: docker.io/hashicorp/vault:latest
+    image: docker.io/hashicorp/vault:2.2
     command: server
     network: "{{ podman_network }}"
+    cap_add: [IPC_LOCK]
     state: started
     restart_policy: always
     volumes:
@@ -31,3 +32,28 @@
       traefik.enable: "true"
       traefik.http.routers.vault.rule: Host(`vault.alftberg.net`)
       traefik.http.services.vault.loadbalancer.server.port: "8200"
+
+- name: Wait for API to answer
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/seal-status"
+    status_code: 200
+  register: seal_status
+  until: seal_status.status | default(0) == 200
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: Read initialization state
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/init"
+  register: init_state
+  changed_when: false
+
+- name: Initialize, unseal and collect keys (Bootstrap)
+  ansible.builtin.include_tasks: bootstrap_init.yml
+  when: vault_bootstrap | bool
+
+- name: Report state (Pipeline)
+  ansible.builtin.debug:
+    msg: "Vault initialized={{ init_state.json.initialized }}, sealed={{ seal_status.json.sealed }}"
+  when: not (vault_bootstrap | bool)

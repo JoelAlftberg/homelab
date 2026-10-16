@@ -1,5 +1,5 @@
 ---
-- name: Create storage for vaultwarden 
+- name: Create storage for vaultwarden
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory

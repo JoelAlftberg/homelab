@@ -1,11 +1,6 @@
 ---
-app_services:
-  - name: gitlab
-    internal_port: 80
-    protocol: "http"
-  - name: vaultwarden
-    internal_port: 80
-    protocol: "http"
-
-ansible_user: ubuntu
+ansible_user: ansible 
 ansible_python_interpreter: "/usr/bin/python3"
+
+vault_addr: "https://vault.alftberg.net"
+vault_init_encrypted_path: "{{ playbook_dir }}/../.vault-init.json.vault"
