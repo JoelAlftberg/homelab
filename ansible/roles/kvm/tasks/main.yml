@@ -27,7 +27,7 @@
 
 # --- Terraform setup ---
 
-- name: Add official HashiCorp repository 
+- name: Add official HashiCorp repository
   ansible.builtin.yum_repository:
     name: hashicorp
     description: HashiCorp Stable RPMs

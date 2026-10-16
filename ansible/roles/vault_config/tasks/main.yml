@@ -1,0 +1,75 @@
+---
+- name: Read encrypted init file
+  ansible.builtin.slurp:
+    src: "{{ vault_init_encrypted_path }}"
+  register: vault_init_content
+  delegate_to: localhost
+  become: false
+  when: vault_bootstrap | default(false) | bool
+  no_log: true
+
+- name: Load token (Bootstrap)
+  ansible.builtin.set_fact:
+    vault_token: >-
+      {{ (vault_init_content.content | b64decode
+      | ansible.builtin.unvault(bootstrap_vault_pass)
+      | trim
+      | from_json).content | b64decode | from_json
+      | json_query('root_token') 
+      }}
+  delegate_to: localhost
+  become: false
+  no_log: true
+  when: vault_bootstrap | default(false) | bool
+
+- name: Load token (Pipeline)
+  ansible.builtin.set_fact:
+    vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+  no_log: true
+  when: not vault_bootstrap | default(false) | bool
+
+- name: Fail easy if no token available
+  ansible.builtin.assert:
+    that: vault_token | length > 0
+    fail_msg: "No vault token. Set VAULT_TOKEN in CI."
+
+- name: Vault API call defaults
+  module_defaults:
+    ansible.builtin.uri:
+      headers:
+        X-Vault-Token: "{{ vault_token }}"
+      validate_certs: "{{ vault_validate_certs | default(true) }}"
+      body_format: json
+      return_content: true
+  block:
+    - name: Read mounts
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/sys/mounts"
+      register: mounts
+      changed_when: false
+      no_log: true
+
+    - name: Set mount facts
+      ansible.builtin.set_fact:
+        vault_mounts: "{{ mounts.json.data | default(mounts.json) }}"
+      no_log: true
+
+    - name: Check whether the CA exists
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/ssh/public_key"
+        status_code: [200, 400, 404]
+      register: ca_check
+      changed_when: false
+
+- name: Bootstrap tasks
+  ansible.builtin.include_tasks: provision.yml
+  when: vault_bootstrap | default(false) | bool
+
+- name: Verify that Vault is configured (Pipeline)
+  ansible.builtin.assert:
+    that:
+      - "'ssh/' in mounts.json.data"
+      - "'kv/' in mounts.json.data"
+      - ca_check.status == 200
+    fail_msg: "Vault is missing the ssh or kv mount, or the CA. Run bootstrap from the bastion host."
+  when: not ( vault_bootstrap | bool )

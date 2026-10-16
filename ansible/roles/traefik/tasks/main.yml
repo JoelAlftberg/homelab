@@ -45,7 +45,7 @@
       - "{{ ['treafik-{{ traefik_name }}'] if dns_host is defined else omit }}"
     ports:
       - "{{ traefik_publish }}"
-    volumes: 
+    volumes:
       - "/mnt/storage/traefik-{{ traefik_name }}/config:/etc/traefik:Z"
       - "{% if traefik_socket | default(false) %}/run/podman/podman.sock:/var/run/docker.sock:ro{% endif %}"
     secrets:

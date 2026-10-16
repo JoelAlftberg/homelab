@@ -15,7 +15,3 @@ terraform {
 provider "libvirt" {
   uri = "qemu:///system"
 }
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}

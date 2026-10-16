@@ -1,0 +1,68 @@
+---
+- name: Collect day-0 secrets
+  hosts: localhost
+  gather_facts: false
+  vars_prompt:
+    - name: bootstrap_vault_pass
+      prompt: "Enter the Vault bootrap init file passphrase"
+      private: true
+      confirm: true
+      default: "{{ lookup('ansible.builtin.env', 'BOOTSTRAP_VAULT_PASS') | default(omit, true) }}"
+
+    - name: cloudflare_api_token
+      prompt: "Enter the Cloudflare API token"
+      private: true
+      default: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN') | default(omit, true) }}"
+
+    - name: wg_password
+      prompt: "Enter the WireGuard password"
+      private: true
+      confirm: true
+      default: "{{ lookup('ansible.builtin.env', 'WG_PASSWORD') | default(omit, true) }}"
+
+  tasks:
+    - name: Hold day-0 values in memory
+      ansible.builtin.set_fact:
+        bootstrap_vault_pass: "{{ bootstrap_vault_pass }}"
+        day0_secrets:
+          cloudflare_api_token: "{{ cloudflare_api_token }}"
+          wg_password: "{{ wg_password }}"
+      no_log: true
+
+- name: Setup utility host and public traefik
+  hosts: utility
+  become: true
+  vars:
+    wg_password: "{{ hostvars['localhost'].day0_secrets.wg_password}}"
+    cloudflare_api_token: "{{ hostvars['localhost'].day0_secrets.cloudflare_api_token }}"
+  roles:
+    - podman
+    - coredns
+    - wireguard
+    - traefik
+
+- name: Install, init and unseal Vault
+  hosts: services
+  become: true
+  vars:
+    vault_bootstrap: true
+    cloudflare_api_token: "{{ hostvars['localhost'].day0_secrets.cloudflare_api_token }}"
+    bootstrap_vault_pass: "{{ hostvars['localhost'].bootstrap_vault_pass}}"
+  roles:
+    - base
+    - podman
+    - socket-proxy
+    - traefik
+    - vault
+    - vaultwarden
+
+- name: Configure Vault
+  hosts: localhost
+  gather_facts: false
+  vars:
+    vault_bootstrap: true
+    vault_seed_secrets:
+      - { path: infra/cloudflare/api-token, value: "{{ day0_secrets.cloudflare_api_token }}"}
+      - { path: services/wireguard/password, value: "{{ day0_secrets.wg_password }}"}
+  roles:
+    - vault_config

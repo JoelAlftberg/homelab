@@ -1,0 +1,78 @@
+---
+- name: Check for un-collected keys
+  ansible.builtin.stat:
+    path: /root/.vault-init.json
+  register: remote_init
+
+- name: Initialize vault
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/init"
+    method: PUT
+    body_format: json
+    body: { secret_shares: 5, secret_threshold: 3 }
+  register: vault_init
+  no_log: true
+  when: not seal_status.json.initialized
+
+- name: Buffer init output on the host
+  ansible.builtin.copy:
+    content: "{{ vault_init.json | to_nice_json }}"
+    dest: /root/.vault-init.json
+    mode: "0600"
+  no_log: true
+  when: vault_init is not skipped
+
+- name: Unseal Vault with 3 keys
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/sys/unseal"
+    method: PUT
+    body_format: json
+    body:
+      key: "{{ item }}"
+  loop: "{{ vault_init.json.keys_base64[:3]}}"
+  no_log: true
+  when: vault_init is not skipped
+
+- name: Collect keys
+  when: remote_init.stat.exists or vault_init is not skipped
+  block:
+
+    - name: Get content of json key file
+      ansible.builtin.slurp:
+          src: /root/.vault-init.json
+      register: init_raw
+      no_log: true
+
+    - name: Encrypt init output
+      ansible.builtin.set_fact:
+        encrypted_text: "{{ init_raw | to_nice_json | ansible.builtin.vault(bootstrap_vault_pass) }}"
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    - name: Create file for encrypted content
+      ansible.builtin.file:
+        path: "{{ vault_init_encrypted_path }}"
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    - name: Write encrypted file
+      ansible.builtin.shell: cat > "{{ vault_init_encrypted_path }}"
+      args:
+        stdin: "{{ encrypted_text }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Save keys to Vaultwarden
+      ansible.builtin.pause:
+        prompt: >
+          Keys written to {{ vault_init_encrypted_path }}
+          Store them in Vaultwarden, press Enter to delete the .vault-init.json on the host.
+
+    - name: Delete json key file
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /root/.vault-init.json

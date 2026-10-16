@@ -1,0 +1,5 @@
+---
+vault_bootstrap: false
+vault_validate_certs: true
+vault_seed_secrets: []
+

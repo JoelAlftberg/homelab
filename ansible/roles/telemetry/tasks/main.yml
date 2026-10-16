@@ -1,7 +1,7 @@
 ---
 - name: Start Prometheus Node Exporter container
   containers.podman.podman_container:
-    name: node-exporter 
+    name: node-exporter
     image: docker.io/prom/node-exporter:latest
     state: started
     restart_policy: always
@@ -18,7 +18,7 @@
 
 - name: Start Prometheus Podman Exporter container
   containers.podman.podman_container:
-    name: podman-exporter 
+    name: podman-exporter
     image: quay.io/navidys/prometheus-podman-exporter:latest
     state: started
     restart_policy: always
@@ -27,7 +27,7 @@
       - podman-exporter
     env:
       CONTAINER_HOST: "tcp://socket-proxy:2375"
-    command: 
+    command:
       - "--collector.enable-all"
 
 - name: Render Alloy config

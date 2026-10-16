@@ -1,4 +1,10 @@
 ---
+- name: Install podman
+  ansible.builtin.package:
+    name:
+      - podman
+    state: present
+
 - name: Change aardvark dns port
   ansible.builtin.ini_file:
     path: /etc/containers/containers.conf
@@ -25,7 +31,7 @@
 - name: Ensure systemd-resolved service is running and enabled
   ansible.builtin.systemd:
     name: systemd-resolved
-    state: restarted 
+    state: restarted
     enabled: true
 
 - name: Restart systemd-resolved
@@ -33,8 +39,4 @@
     name: systemd-resolved
     state: restarted
 
-- name: Install podman
-  ansible.builtin.package:
-    name: 
-      - podman
-    state: present
+
