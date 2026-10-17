@@ -3,3 +3,11 @@ traefik_network: wg
 traefik_publish: "443:443/tcp"
 podman_network: wg
 dns_host: true
+
+cloudflare_api_token: >-
+  {{ lookup('community.hashi_vault.vault_kv2_get', 'ci/cloudflare/api-token',
+            engine_mount_point='kv').secret.value }}
+
+wg_password: >-
+  {{ lookup('community.hashi_vault.vault_kv2_get', 'ci/wireguard/password',
+            engine_mount_point='kv').secret.value }}

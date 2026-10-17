@@ -1,0 +1,35 @@
+---
+- name: Install CA public key
+  ansible.builtin.copy:
+    content: "{{ hostvars['localhost'].ssh_ca_public_key }}"
+    dest: /etc/ssh/trusted-user-ca-keys.pem
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create principal directory
+  ansible.builtin.file:
+    path: /etc/ssh/auth_principals
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Add sshd config file
+  ansible.builtin.copy:
+    content: | 
+      TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+      AuthorizedPrincipalsFile /etc/ssh/auth_principals/%u
+    dest: /etc/ssh/sshd_config.d/10-vault-ca.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add sshd principal file
+  ansible.builtin.copy:
+    content: "ansible\n"
+    dest: /etc/ssh/auth_principals/ansible
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Validate and reload sshd

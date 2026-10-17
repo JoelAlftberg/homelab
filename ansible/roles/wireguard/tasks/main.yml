@@ -33,6 +33,7 @@
       PASSWORD_HASH: "{{ wg_password | password_hash('bcrypt') }}"
       WG_HOST: "vpn.alftberg.net"
       WG_ALLOWED_IPS: "10.8.0.0/24, 10.22.1.0/24"
+      WG_DEFAULT_DNS: "10.22.1.101" 
     privileged: true
     sysctl:
       net.ipv4.ip_forward: "1"

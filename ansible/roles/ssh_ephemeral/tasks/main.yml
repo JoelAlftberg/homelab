@@ -1,0 +1,50 @@
+---
+- name: Require VAULT_TOKEN in the environment
+  ansible.builtin.assert:
+    that: lookup('ansible.builtin.env', 'VAULT_TOKEN') | length > 0
+    fail_msg: "VAULT_TOKEN is not set."
+  no_log: true
+
+- name: Create a temp private directory for this run
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: ssh-ephemeral-
+  register: ssh_tmp
+
+- name: Store the directory path for cleanup
+  ansible.builtin.set_fact:
+    ssh_ephemeral_dir: "{{ ssh_tmp.path }}"
+
+- name: Generate throwaway keypair
+  ansible.builtin.command:
+    argv: [ssh-keygen, -t, ed25519, -N, "", -q, -f, "{{ ssh_tmp.path ~ '/key' }}"]
+    creates: "{{ ssh_tmp.path ~ '/key'}}"
+
+- name: Sign the public key with Vault
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ ssh_ephemeral_mount }}/sign/{{ ssh_ephemeral_role }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ lookup('ansible.builtin.env', 'VAULT_TOKEN') }}"
+    body_format: json
+    body:
+      public_key: "{{ lookup('ansible.builtin.file', ssh_tmp.path ~ '/key.pub')}}"
+      valid_principals: "{{ ssh_ephemeral_principal }}"
+    validate_certs: "{{ vault_validate_certs | default(true) }}"
+    return_content: true
+    status_code: [200]
+  register: signed
+  no_log: true
+
+- name: Write the certificate next to the key
+  ansible.builtin.copy:
+    content: "{{ signed.json.data.signed_key }}"
+    dest: "{{ ssh_tmp.path }}/key-cert.pub"
+    mode: "0600"
+  no_log: true
+
+- name: Point every inventory host at the ephemeral key
+  ansible.builtin.add_host:
+    name: "{{ item }}"
+    ansible_ssh_private_key_file: "{{ ssh_tmp.path ~ '/key' }}"
+  loop: "{{ groups['all'] | reject('equalto', 'localhost') | list }}"

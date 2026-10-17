@@ -1,4 +1,11 @@
 ---
+- name: Obtain ephemeral SSH keys
+  hosts: localhost
+  gather_facts: false
+  become: false
+  roles:
+    - ssh_ephemeral
+
 - name: Configure Service Host
   hosts: services
   become: true
@@ -9,7 +16,7 @@
     - traefik
     - vaultwarden
     - vault
-#    - gitlab
+    - gitlab
 
 - name: Configure Utility Host
   hosts: utility
@@ -19,3 +26,13 @@
     - coredns
     - wireguard
     - traefik
+
+- name: Clean up ephemeral key
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove temp directory
+      ansible.builtin.file:
+        path: "{{ ssh_ephemeral_dir }}"
+        state: absent
+      when: ssh_ephemeral_dir is defined
