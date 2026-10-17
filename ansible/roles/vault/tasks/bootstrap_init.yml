@@ -53,6 +53,7 @@
     - name: Create file for encrypted content
       ansible.builtin.file:
         path: "{{ vault_init_encrypted_path }}"
+        state: touch
       delegate_to: localhost
       become: false
       no_log: true

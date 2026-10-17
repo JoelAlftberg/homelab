@@ -2,3 +2,7 @@ traefik_name: internal
 traefik_publish: "10.22.1.100:443:443/tcp"
 traefik_socket: true
 podman_network: internal
+
+cloudflare_api_token: >-
+  {{ lookup('community.hashi_vault.vault_kv2_get', 'ci/cloudflare/api-token',
+            engine_mount_point='kv').secret.value }}

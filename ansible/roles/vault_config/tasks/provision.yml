@@ -43,6 +43,8 @@
           allow_user_certificates: true
           allowed_users: ansible
           default_user: ansible
+          default_extensions:
+            permit-pty: ""
           ttl: 10m
           max_ttl: 30m
         status_code: [200, 204]
@@ -57,16 +59,6 @@
             path "kv/data/ci/*"       { capabilities = ["read"] }
             path "kv/metadata/ci/*"   { capabilities = ["list", "read"] }
             path "sys/mounts"         { capabilities = ["read"] }
-        status_code: [200, 204]
-
-    - name: Write services policy
-      ansible.builtin.uri:
-        url: "{{ vault_addr }}/v1/sys/policies/acl/services"
-        method: PUT
-        body:
-          policy: |
-            path "kv/data/infra/*"    { capabilities = ["read"] }
-            path "kv/data/services/*"    { capabilities = ["read"] }
         status_code: [200, 204]
 
     - name: Check for existing secrets

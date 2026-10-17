@@ -62,7 +62,31 @@
   vars:
     vault_bootstrap: true
     vault_seed_secrets:
-      - { path: infra/cloudflare/api-token, value: "{{ day0_secrets.cloudflare_api_token }}"}
-      - { path: services/wireguard/password, value: "{{ day0_secrets.wg_password }}"}
+      - { path: ci/cloudflare/api-token, value: "{{ day0_secrets.cloudflare_api_token }}"}
+      - { path: ci/wireguard/password, value: "{{ day0_secrets.wg_password }}"}
   roles:
     - vault_config
+
+- name: Fetch Vault SSH CA certificate
+  hosts: localhost
+  gather_facts: false
+  become: false
+  tasks:
+  - name: Read CA public key  
+    ansible.builtin.uri:
+      url: "{{ vault_addr }}/v1/ssh/public_key"
+      validate_certs: "{{ vault_validate_certs | default(true) }}"
+      return_content: true
+      status_code: [200, 204]
+    register: ca_public_key
+
+  - name: Store CA key as a fact
+    ansible.builtin.set_fact:
+      ssh_ca_public_key: "{{ ca_public_key.content }}"
+
+- name: Configure CA trust on hosts
+  hosts: all:!localhost
+  become: true
+  gather_facts: true
+  roles:
+    - ssh_ca_trust

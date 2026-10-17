@@ -1,0 +1,4 @@
+---
+ssh_ephemeral_role: ansible
+ssh_ephemeral_principal: ansible
+ssh_ephemeral_mount: ssh

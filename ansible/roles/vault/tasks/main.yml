@@ -51,9 +51,9 @@
 
 - name: Initialize, unseal and collect keys (Bootstrap)
   ansible.builtin.include_tasks: bootstrap_init.yml
-  when: vault_bootstrap | bool
+  when: vault_bootstrap | default(false) | bool
 
 - name: Report state (Pipeline)
   ansible.builtin.debug:
     msg: "Vault initialized={{ init_state.json.initialized }}, sealed={{ seal_status.json.sealed }}"
-  when: not (vault_bootstrap | bool)
+  when: not vault_bootstrap | default(false) | bool
